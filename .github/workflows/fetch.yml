@@ -1,0 +1,36 @@
+name: fetch-news
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download XML
+        run: |
+          curl -sSL --max-time 30 -A "Mozilla/5.0 (MT4 News Fetcher)" \
+            -o tmp.xml "https://nfs.faireconomy.media/ff_calendar_thisweek.xml" || true
+          ls -l tmp.xml || true
+          if [ -s tmp.xml ] && [ "$(wc -c < tmp.xml)" -gt 500 ] && head -c 200 tmp.xml | grep -q '<?xml'; then
+            mv tmp.xml n.xml
+            echo "OK: da cap nhat n.xml"
+          else
+            echo "Du lieu tai ve khong hop le, giu file cu"
+            head -c 300 tmp.xml || true
+            rm -f tmp.xml
+          fi
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "update news" && git push)
+# test
